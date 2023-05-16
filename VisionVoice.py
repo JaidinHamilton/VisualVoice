@@ -15,11 +15,12 @@ def generate_description(image):
     processor = CLIPProcessor.from_pretrained(model_name)
     model = CLIPModel.from_pretrained(model_name)
 
-    # Adding an extra dimension to simulate a batch
-    inputs = processor(text=["a description for my image"], images=[image], return_tensors="pt", padding=True)
+    inputs = processor(text=["a description for my image"], images=image, return_tensors="pt", padding=True)
     logits_per_image = model(**inputs).logits_per_image
     probs = logits_per_image.softmax(dim=-1)
     description = processor.decode(probs.argmax(dim=-1)[0])
+
+    print(f"Generated description: {description}")  # Add this line
 
     return description
 
@@ -45,13 +46,16 @@ def image_to_audio():
     description = generate_description(image)
     print(f"Generated description: {description}")  # Debug print
     
-    if description:  # Check if description is not empty
+    # Check if the description is valid
+    if description and not description.isspace() and not description == "!":
         # Write the description to a text file
         write_to_text_file(description, 'output_text.txt')
+        print(f"Type of description: {type(description)}")
         text_to_speech(description, 'output_audio.mp3')
         return send_file('output_audio.mp3', as_attachment=True)
     else:
-        return "No description generated", 500
+        return "No valid description generated", 500
+
 
 if __name__ == '__main__':
     app.run()
