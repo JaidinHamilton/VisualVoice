@@ -15,7 +15,7 @@ def generate_description(image):
     processor = CLIPProcessor.from_pretrained(model_name)
     model = CLIPModel.from_pretrained(model_name)
 
-    inputs = processor(text=["a description for my image"], images=image, return_tensors="pt", padding=True)
+    inputs = processor(text=["a photo of a cat"], images=image, return_tensors="pt", padding=True)
     logits_per_image = model(**inputs).logits_per_image
     probs = logits_per_image.softmax(dim=-1)
     description = processor.decode(probs.argmax(dim=-1)[0])
