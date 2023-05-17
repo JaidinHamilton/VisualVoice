@@ -2,6 +2,7 @@ import cv2
 from transformers import CLIPProcessor, CLIPModel
 from gtts import gTTS
 from flask import Flask, request, send_file
+from google.cloud import vision
 
 # Load and preprocess images
 def load_image(image_path):
@@ -11,16 +12,26 @@ def load_image(image_path):
 
 # Generate image descriptions
 def generate_description(image):
+    # CLIP model
     model_name = "openai/clip-vit-base-patch32"
     processor = CLIPProcessor.from_pretrained(model_name)
     model = CLIPModel.from_pretrained(model_name)
 
-    inputs = processor(text=["a photo of a cat"], images=image, return_tensors="pt", padding=True)
+    inputs = processor(text=["a photo of a landscape", "a close-up of a face", "an abstract image", "a photo of an object"], images=image, return_tensors="pt", padding=True)
     logits_per_image = model(**inputs).logits_per_image
     probs = logits_per_image.softmax(dim=-1)
-    description = processor.decode(probs.argmax(dim=-1)[0])
+    clip_description = processor.decode(probs.argmax(dim=-1)[0])
 
-    print(f"Generated description: {description}")  # Add this line
+    # Google Cloud Vision API
+    client = vision.ImageAnnotatorClient()
+    response = client.annotate_image({
+        'image': {'content': cv2.imencode('.jpg', image)[1].tobytes()},
+        'features': [{'type_': vision.Feature.Type.LABEL_DETECTION}],
+    })
+    google_description = ', '.join([annotation.description for annotation in response.label_annotations])
+
+    # Combine descriptions
+    description = f"{clip_description}. {google_description}."
 
     return description
 
